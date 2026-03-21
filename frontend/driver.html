@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Driver SOP Lookup</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1565c0;
+            --primary-light: #e3f2fd;
+            --success: #2e7d32;
+            --warning: #e65100;
+            --danger: #c62828;
+            --bg: #f5f5f5;
+            --card: #ffffff;
+            --text: #212121;
+            --text2: #616161;
+            --border: #e0e0e0;
+            --radius: 14px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        /* ── LOGIN ── */
+        .login-screen {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
+            padding: 20px;
+        }
+        .login-screen.hidden { display: none; }
+        .login-box {
+            background: white; border-radius: 20px; padding: 40px 30px; width: 100%; max-width: 380px;
+            text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .login-box h1 { font-size: 22px; margin-bottom: 6px; color: var(--text); }
+        .login-box .sub { font-size: 14px; color: var(--text2); margin-bottom: 28px; }
+        .login-box input {
+            width: 100%; padding: 16px; border: 2px solid var(--border); border-radius: 12px;
+            font-size: 18px; text-align: center; margin-bottom: 14px; outline: none;
+        }
+        .login-box input:focus { border-color: var(--primary); }
+        .login-box button {
+            width: 100%; padding: 16px; background: var(--primary); color: white; border: none;
+            border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer;
+        }
+        .login-box button:active { transform: scale(0.98); }
+        .login-error { color: var(--danger); font-size: 14px; margin-top: 10px; }
+
+        /* ── MAIN APP ── */
+        .app-screen { display: none; }
+        .app-screen.active { display: block; }
+
+        .top-bar {
+            background: var(--primary); color: white; padding: 16px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .top-bar h1 { font-size: 18px; font-weight: 600; }
+        .top-bar .driver-name { font-size: 13px; opacity: 0.8; }
+        .top-bar button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+
+        /* ── SEARCH ── */
+        .search-area { padding: 20px; }
+        .search-box {
+            position: relative; width: 100%;
+        }
+        .search-box input {
+            width: 100%; padding: 18px 18px 18px 50px; border: 2px solid var(--border); border-radius: 14px;
+            font-size: 18px; outline: none; background: white;
+        }
+        .search-box input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(21,101,192,0.1); }
+        .search-box .icon {
+            position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+            font-size: 22px; color: var(--text2);
+        }
+        .search-hint { text-align: center; color: var(--text2); margin-top: 30px; font-size: 15px; line-height: 1.6; }
+
+        /* ── SEARCH RESULTS ── */
+        .results-list { padding: 0 20px; }
+        .result-item {
+            background: white; border-radius: 12px; padding: 16px; margin-bottom: 10px;
+            display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; border: 1px solid var(--border); transition: all 0.15s;
+        }
+        .result-item:active { background: var(--primary-light); }
+        .result-item .name { font-weight: 600; font-size: 16px; }
+        .result-item .meta { font-size: 13px; color: var(--text2); margin-top: 3px; }
+        .result-item .arrow { color: var(--text2); font-size: 20px; }
+
+        /* ── SOP DETAIL VIEW ── */
+        .sop-view { display: none; }
+        .sop-view.active { display: block; }
+
+        .sop-header {
+            background: var(--primary); color: white; padding: 16px 20px;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .sop-header .back-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px;
+            border-radius: 8px; font-size: 14px; cursor: pointer; margin-bottom: 10px;
+        }
+        .sop-header h2 { font-size: 20px; margin-bottom: 2px; }
+        .sop-header .type-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 20px;
+            background: rgba(255,255,255,0.2); font-size: 12px; font-weight: 500; margin-top: 4px;
+        }
+        .sop-header .address { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+
+        .sop-body { padding: 16px 20px 40px; }
+
+        .sop-category {
+            background: white; border-radius: var(--radius); margin-bottom: 14px;
+            border: 1px solid var(--border); overflow: hidden;
+        }
+        .sop-category-header {
+            padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+            font-weight: 600; font-size: 15px; cursor: pointer; user-select: none;
+            background: #fafafa; border-bottom: 1px solid var(--border);
+        }
+        .sop-category-header .cat-icon { font-size: 20px; }
+        .sop-category-header .toggle { margin-left: auto; color: var(--text2); font-size: 18px; transition: transform 0.2s; }
+        .sop-category.collapsed .sop-category-body { display: none; }
+        .sop-category.collapsed .toggle { transform: rotate(-90deg); }
+
+        .sop-category-body { padding: 4px 0; }
+        .sop-row {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 10px 16px; border-bottom: 1px solid #f0f0f0;
+        }
+        .sop-row:last-child { border-bottom: none; }
+        .sop-row .label { font-size: 13px; color: var(--text2); flex: 0 0 40%; }
+        .sop-row .value { font-size: 15px; font-weight: 500; text-align: right; flex: 1; word-break: break-word; }
+        .sop-row .value.yes { color: var(--success); }
+        .sop-row .value.alert { color: var(--danger); font-weight: 700; }
+        .sop-row .value.warn { color: var(--warning); font-weight: 600; }
+
+        /* Sensitive field tap-to-reveal */
+        .sensitive-field {
+            background: #e3f2fd; color: var(--primary); padding: 6px 12px; border-radius: 8px;
+            cursor: pointer; font-family: monospace; font-size: 15px; display: inline-block;
+        }
+        .sensitive-field.hidden-val { background: #f0f0f0; color: var(--text2); font-family: inherit; }
+
+        /* Contact quick-actions */
+        .contact-action {
+            display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+            background: var(--primary-light); color: var(--primary); border-radius: 10px;
+            text-decoration: none; font-weight: 600; font-size: 14px; margin-top: 4px;
+        }
+
+        .no-sop-msg { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 15px; }
+
+        /* ── Call-to-action buttons at bottom ── */
+        .sop-actions { padding: 10px 20px 30px; display: flex; gap: 10px; }
+        .sop-actions a {
+            flex: 1; padding: 14px; text-align: center; border-radius: 12px; text-decoration: none;
+            font-weight: 600; font-size: 15px;
+        }
+        .btn-call { background: var(--success); color: white; }
+        .btn-nav { background: var(--primary); color: white; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════ LOGIN SCREEN ═══════ -->
+<div class="login-screen" id="loginScreen">
+    <div class="login-box">
+        <h1>Driver SOP Lookup</h1>
+        <p class="sub">Enter your driver credentials</p>
+        <input type="number" id="driverId" placeholder="Driver ID" inputmode="numeric">
+        <input type="password" id="driverPin" placeholder="PIN" inputmode="numeric">
+        <button onclick="doLogin()">Sign In</button>
+        <div class="login-error" id="loginError"></div>
+    </div>
+</div>
+
+<!-- ═══════ MAIN APP - SEARCH ═══════ -->
+<div class="app-screen" id="searchScreen">
+    <div class="top-bar">
+        <div>
+            <h1>SOP Lookup</h1>
+            <div class="driver-name" id="driverNameDisplay"></div>
+        </div>
+        <button onclick="doLogout()">Logout</button>
+    </div>
+    <div class="search-area">
+        <div class="search-box">
+            <span class="icon">&#128269;</span>
+            <input type="text" id="searchInput" placeholder="Search customer name..." autocomplete="off" oninput="onSearch()">
+        </div>
+    </div>
+    <div class="results-list" id="resultsList"></div>
+    <div class="search-hint" id="searchHint">
+        Type a customer name to look up<br>their delivery requirements
+    </div>
+</div>
+
+<!-- ═══════ SOP DETAIL VIEW ═══════ -->
+<div class="sop-view" id="sopView">
+    <div class="sop-header">
+        <button class="back-btn" onclick="backToSearch()">&#8592; Back to Search</button>
+        <h2 id="sopCompanyName"></h2>
+        <span class="type-badge" id="sopTypeBadge"></span>
+        <div class="address" id="sopAddress"></div>
+    </div>
+    <div class="sop-body" id="sopBody"></div>
+    <div class="sop-actions" id="sopActions"></div>
+</div>
+
+<script>
+const API = window.location.origin;
+let sessionToken = null;
+let driverInfo = null;
+let sopSchema = null;
+
+// ── Load SOP schema on start ──
+async function loadSchema() {
+    try {
+        const res = await fetch(`${API}/api/sop-schema`);
+        sopSchema = await res.json();
+    } catch(e) { console.error('Schema load failed', e); }
+}
+loadSchema();
+
+function headers() {
+    return { 'Content-Type': 'application/json', 'X-Session-Token': sessionToken || '' };
+}
+
+// ── AUTH ──
+async function doLogin() {
+    const id = document.getElementById('driverId').value;
+    const pin = document.getElementById('driverPin').value;
+    document.getElementById('loginError').textContent = '';
+    try {
+        const res = await fetch(`${API}/api/driver/login`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ driver_id: parseInt(id), pin: pin })
+        });
+        const data = await res.json();
+        if (!res.ok) { document.getElementById('loginError').textContent = data.error; return; }
+        sessionToken = data.token;
+        driverInfo = data.driver;
+        document.getElementById('driverNameDisplay').textContent = driverInfo.name;
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('searchScreen').classList.add('active');
+        document.getElementById('searchInput').focus();
+    } catch(e) { document.getElementById('loginError').textContent = 'Connection error'; }
+}
+
+function doLogout() {
+    sessionToken = null;
+    driverInfo = null;
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('searchScreen').classList.remove('active');
+    document.getElementById('sopView').classList.remove('active');
+    document.getElementById('driverId').value = '';
+    document.getElementById('driverPin').value = '';
+}
+
+// ── SEARCH ──
+let searchTimer = null;
+function onSearch() {
+    clearTimeout(searchTimer);
+    const q = document.getElementById('searchInput').value.trim();
+    if (q.length < 2) {
+        document.getElementById('resultsList').innerHTML = '';
+        document.getElementById('searchHint').style.display = 'block';
+        return;
+    }
+    document.getElementById('searchHint').style.display = 'none';
+    searchTimer = setTimeout(() => doSearch(q), 250);
+}
+
+async function doSearch(q) {
+    try {
+        const res = await fetch(`${API}/api/driver/search?q=${encodeURIComponent(q)}`, { headers: headers() });
+        const data = await res.json();
+        renderResults(data.customers || []);
+    } catch(e) { console.error(e); }
+}
+
+function renderResults(customers) {
+    const el = document.getElementById('resultsList');
+    if (customers.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px;">No customers found</div>';
+        return;
+    }
+    el.innerHTML = customers.map(c => `
+        <div class="result-item" onclick="viewSOP(${c.id})">
+            <div>
+                <div class="name">${esc(c.company_name)}</div>
+                <div class="meta">${esc(c.customer_type)} &bull; ${esc(c.city || '')}, ${esc(c.state || '')}</div>
+            </div>
+            <span class="arrow">&#8250;</span>
+        </div>
+    `).join('');
+}
+
+// ── VIEW SOP ──
+async function viewSOP(cid) {
+    try {
+        const res = await fetch(`${API}/api/driver/customer/${cid}/sop`, { headers: headers() });
+        const data = await res.json();
+        if (!res.ok) return;
+        renderSOP(data.customer, data.requirements);
+        document.getElementById('searchScreen').classList.remove('active');
+        document.getElementById('sopView').classList.add('active');
+        window.scrollTo(0, 0);
+    } catch(e) { console.error(e); }
+}
+
+function backToSearch() {
+    document.getElementById('sopView').classList.remove('active');
+    document.getElementById('searchScreen').classList.add('active');
+}
+
+function renderSOP(customer, requirements) {
+    // Header
+    document.getElementById('sopCompanyName').textContent = customer.company_name;
+    document.getElementById('sopTypeBadge').textContent = (customer.customer_type || 'commercial').replace(/_/g, ' ');
+    const addr = [customer.address_line1, customer.city, customer.state, customer.zip_code].filter(Boolean).join(', ');
+    document.getElementById('sopAddress').textContent = addr || '';
+
+    // Group requirements by category
+    const grouped = {};
+    for (const req of requirements) {
+        if (!grouped[req.category]) grouped[req.category] = [];
+        grouped[req.category].push(req);
+    }
+
+    const body = document.getElementById('sopBody');
+
+    if (requirements.length === 0) {
+        body.innerHTML = '<div class="no-sop-msg">No SOP requirements have been set for this customer yet.<br>Contact your dispatcher for details.</div>';
+        document.getElementById('sopActions').innerHTML = '';
+        return;
+    }
+
+    // Determine display order from schema
+    const categoryOrder = sopSchema ? Object.keys(sopSchema) : Object.keys(grouped);
+    let html = '';
+
+    for (const catKey of categoryOrder) {
+        if (!grouped[catKey]) continue;
+        const catInfo = sopSchema ? sopSchema[catKey] : null;
+        const label = catInfo ? catInfo.label : catKey.replace(/_/g, ' ');
+        const icon = catInfo ? catInfo.icon : '📌';
+        const fields = catInfo ? catInfo.fields : {};
+
+        html += `<div class="sop-category" id="cat_${catKey}">
+            <div class="sop-category-header" onclick="toggleCat('${catKey}')">
+                <span class="cat-icon">${icon}</span>
+                <span>${esc(label)}</span>
+                <span class="toggle">&#9660;</span>
+            </div>
+            <div class="sop-category-body">`;
+
+        for (const req of grouped[catKey]) {
+            const fieldDef = fields[req.requirement_key] || {};
+            const fieldLabel = fieldDef.label || req.requirement_key.replace(/_/g, ' ');
+            const isSensitive = fieldDef.sensitive;
+            let valueHtml = formatValue(req.requirement_value, req.requirement_key, isSensitive);
+
+            html += `<div class="sop-row">
+                <span class="label">${esc(fieldLabel)}</span>
+                <span class="value ${getValueClass(req.requirement_key, req.requirement_value)}">${valueHtml}</span>
+            </div>`;
+        }
+        html += `</div></div>`;
+    }
+
+    body.innerHTML = html;
+
+    // Action buttons
+    let actionsHtml = '';
+    if (customer.primary_contact_phone) {
+        actionsHtml += `<a href="tel:${customer.primary_contact_phone}" class="btn-call">&#128222; Call Customer</a>`;
+    }
+    if (customer.address_line1) {
+        const mapQ = encodeURIComponent([customer.address_line1, customer.city, customer.state, customer.zip_code].filter(Boolean).join(', '));
+        actionsHtml += `<a href="https://maps.google.com/?q=${mapQ}" target="_blank" class="btn-nav">&#128506; Navigate</a>`;
+    }
+    document.getElementById('sopActions').innerHTML = actionsHtml;
+}
+
+function toggleCat(catKey) {
+    document.getElementById('cat_' + catKey).classList.toggle('collapsed');
+}
+
+function formatValue(value, key, sensitive) {
+    if (sensitive) {
+        const id = 'sens_' + Math.random().toString(36).slice(2);
+        return `<span class="sensitive-field hidden-val" id="${id}" onclick="revealSensitive('${id}', '${esc(value)}')">[Tap to reveal]</span>`;
+    }
+    if (value === 'Yes' || value === 'true') return '&#9989; Yes';
+    if (value === 'No' || value === 'false') return 'No';
+    // Phone numbers - make tappable
+    if (key.includes('phone') && /[\d\-\(\)\+\s]{7,}/.test(value)) {
+        return `<a href="tel:${value}" class="contact-action">&#128222; ${esc(value)}</a>`;
+    }
+    return esc(value);
+}
+
+function getValueClass(key, value) {
+    const alertKeys = ['hazmat_flag', 'hazmat_class', 'controlled_substance', 'warnings'];
+    const warnKeys = ['hard_hat', 'steel_toe_boots', 'safety_vest', 'gloves_required', 'safety_glasses', 'two_person_required', 'chain_of_custody', 'security_checkin', 'id_verification', 'background_check'];
+    if (alertKeys.includes(key) && value && value !== 'No' && value !== 'false') return 'alert';
+    if (warnKeys.includes(key) && (value === 'Yes' || value === 'true')) return 'warn';
+    if (value === 'Yes' || value === 'true') return 'yes';
+    return '';
+}
+
+function revealSensitive(id, value) {
+    const el = document.getElementById(id);
+    el.textContent = value;
+    el.classList.remove('hidden-val');
+    setTimeout(() => {
+        el.textContent = '[Tap to reveal]';
+        el.classList.add('hidden-val');
+    }, 30000);
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// Enter key on PIN
+document.getElementById('driverPin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

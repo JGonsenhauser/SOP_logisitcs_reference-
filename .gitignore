@@ -1,0 +1,19 @@
+# Database
+data/sop_app.db
+data/.encryption_key
+data/photos/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

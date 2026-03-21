@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: sop-logistics-reference
+    runtime: python
+    buildCommand: ""
+    startCommand: python run.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+    autoDeploy: true
+    plan: free

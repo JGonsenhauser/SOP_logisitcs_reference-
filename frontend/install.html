@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Install SOP Lookup</title>
+    <meta name="theme-color" content="#1565c0">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
+            color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 24px; text-align: center;
+        }
+        .logo {
+            width: 120px; height: 120px; margin-bottom: 24px;
+            background: rgba(255,255,255,0.15); border-radius: 28px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 48px; font-weight: 900; backdrop-filter: blur(10px);
+        }
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        .sub { font-size: 16px; opacity: 0.85; margin-bottom: 36px; line-height: 1.5; max-width: 360px; }
+        .open-btn {
+            display: inline-block; background: white; color: #1565c0; padding: 16px 48px;
+            border-radius: 14px; font-size: 18px; font-weight: 700; text-decoration: none;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2); margin-bottom: 36px;
+        }
+        .open-btn:active { transform: scale(0.97); }
+        .instructions {
+            background: rgba(255,255,255,0.12); border-radius: 16px; padding: 24px;
+            max-width: 400px; width: 100%; backdrop-filter: blur(10px);
+        }
+        .instructions h3 { font-size: 16px; margin-bottom: 16px; opacity: 0.9; }
+        .step {
+            display: flex; align-items: flex-start; gap: 12px; text-align: left;
+            margin-bottom: 14px; font-size: 15px; line-height: 1.4;
+        }
+        .step:last-child { margin-bottom: 0; }
+        .step-num {
+            background: rgba(255,255,255,0.25); min-width: 28px; height: 28px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px; flex-shrink: 0;
+        }
+        .platform { display: none; }
+        .platform.active { display: block; }
+        .features {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+            max-width: 400px; width: 100%; margin-top: 32px;
+        }
+        .feature {
+            background: rgba(255,255,255,0.1); border-radius: 12px; padding: 16px;
+            text-align: center;
+        }
+        .feature .icon { font-size: 28px; margin-bottom: 6px; }
+        .feature .label { font-size: 13px; opacity: 0.85; }
+    </style>
+</head>
+<body>
+
+<div class="logo">SOP</div>
+<h1>SOP Lookup</h1>
+<p class="sub">Instantly look up customer delivery requirements, gate codes, safety procedures, and contacts — right from your phone.</p>
+
+<a href="/driver" class="open-btn" id="openBtn">Open App</a>
+
+<div class="instructions">
+    <h3>Install on your phone</h3>
+
+    <!-- Android Instructions -->
+    <div class="platform" id="androidInstructions">
+        <div class="step"><span class="step-num">1</span><span>Tap the <strong>menu icon</strong> (three dots) in the top-right of Chrome</span></div>
+        <div class="step"><span class="step-num">2</span><span>Tap <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong></span></div>
+        <div class="step"><span class="step-num">3</span><span>Tap <strong>Install</strong> to confirm. The app will appear on your home screen.</span></div>
+    </div>
+
+    <!-- iOS Instructions -->
+    <div class="platform" id="iosInstructions">
+        <div class="step"><span class="step-num">1</span><span>Tap the <strong>Share button</strong> (square with arrow) at the bottom of Safari</span></div>
+        <div class="step"><span class="step-num">2</span><span>Scroll down and tap <strong>"Add to Home Screen"</strong></span></div>
+        <div class="step"><span class="step-num">3</span><span>Tap <strong>Add</strong> in the top-right corner. The app icon will appear on your home screen.</span></div>
+    </div>
+
+    <!-- Desktop / Other -->
+    <div class="platform" id="desktopInstructions">
+        <div class="step"><span class="step-num">1</span><span>Click the <strong>install icon</strong> in the address bar (or the menu)</span></div>
+        <div class="step"><span class="step-num">2</span><span>Click <strong>"Install"</strong> to add the app to your device</span></div>
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature"><div class="icon">&#128269;</div><div class="label">Quick Search</div></div>
+    <div class="feature"><div class="icon">&#128274;</div><div class="label">Secure Access</div></div>
+    <div class="feature"><div class="icon">&#128247;</div><div class="label">Offline Ready</div></div>
+    <div class="feature"><div class="icon">&#128222;</div><div class="label">One-Tap Call</div></div>
+</div>
+
+<script>
+// Detect platform and show appropriate instructions
+const ua = navigator.userAgent;
+const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+const isAndroid = /Android/.test(ua);
+
+if (isIOS) {
+    document.getElementById('iosInstructions').classList.add('active');
+} else if (isAndroid) {
+    document.getElementById('androidInstructions').classList.add('active');
+} else {
+    document.getElementById('desktopInstructions').classList.add('active');
+}
+
+// If already installed as PWA, redirect to app
+if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    window.location.href = '/driver';
+}
+
+// Handle Android install prompt
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Replace "Open App" button with "Install App"
+    const btn = document.getElementById('openBtn');
+    btn.textContent = 'Install App';
+    btn.href = '#';
+    btn.addEventListener('click', async (ev) => {
+        ev.preventDefault();
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            if (result.outcome === 'accepted') {
+                btn.textContent = 'Opening...';
+                setTimeout(() => window.location.href = '/driver', 1000);
+            }
+            deferredPrompt = null;
+        } else {
+            window.location.href = '/driver';
+        }
+    });
+});
+</script>
+</body>
+</html>

@@ -5,20 +5,31 @@ Flexible key-value requirements per customer so admins can add any SOP field.
 """
 import os
 import sqlite3
-import hashlib
+import datetime
+import logging
+
+import bcrypt
+
+from config import Settings
+
+logger = logging.getLogger(__name__)
 
 # ── DATA DIRECTORY ──
-_LOCAL_DATA = os.path.join(os.path.dirname(__file__), "..", "data")
+settings = Settings()
+_LOCAL_DATA = os.path.dirname(settings.DB_PATH)
 os.makedirs(_LOCAL_DATA, exist_ok=True)
-DB_PATH = os.path.join(_LOCAL_DATA, "sop_app.db")
 
 
-def hash_pin(pin):
-    return hashlib.sha256(pin.encode()).hexdigest()
+def hash_pin(pin: str) -> str:
+    return bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
 
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
+def verify_pin(pin: str, pin_hash: str) -> bool:
+    return bcrypt.checkpw(pin.encode(), pin_hash.encode())
+
+
+def get_db() -> sqlite3.Connection:
+    conn = sqlite3.connect(settings.DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -158,6 +169,14 @@ SOP_CATEGORIES = {
 }
 
 
+# Collect all sensitive field keys for use by crypto module
+SENSITIVE_FIELDS: set[str] = set()
+for cat in SOP_CATEGORIES.values():
+    for key, field in cat["fields"].items():
+        if field.get("sensitive"):
+            SENSITIVE_FIELDS.add(key)
+
+
 def init_db():
     conn = get_db()
     conn.executescript("""
@@ -168,6 +187,7 @@ def init_db():
         phone TEXT,
         email TEXT,
         pin_hash TEXT NOT NULL,
+        is_admin INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -209,22 +229,83 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_sop_customer ON sop_requirements(customer_id);
     CREATE INDEX IF NOT EXISTS idx_sop_category ON sop_requirements(category);
 
+    CREATE TABLE IF NOT EXISTS sessions (
+        token TEXT PRIMARY KEY,
+        user_type TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        ip_address TEXT,
+        geo_city TEXT,
+        geo_region TEXT,
+        geo_country TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
     CREATE TABLE IF NOT EXISTS audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_type TEXT,
         user_id INTEGER,
+        user_name TEXT,
         action TEXT,
         resource_type TEXT,
         resource_id INTEGER,
         details TEXT,
+        ip_address TEXT,
+        user_agent TEXT,
+        geo_city TEXT,
+        geo_region TEXT,
+        geo_country TEXT,
+        session_id TEXT,
+        request_path TEXT,
+        response_time_ms INTEGER,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS login_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ip_address TEXT NOT NULL,
+        attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempts(ip_address, attempted_at);
     """)
     conn.commit()
+
+    # Migration: add is_admin column if it doesn't exist (for existing DBs)
+    try:
+        conn.execute("SELECT is_admin FROM drivers LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.execute("ALTER TABLE drivers ADD COLUMN is_admin INTEGER DEFAULT 0")
+        conn.commit()
+
+    # Migration: add new audit_log columns if they don't exist
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(audit_log)").fetchall()}
+    new_audit_cols = {
+        "user_name": "TEXT",
+        "ip_address": "TEXT",
+        "user_agent": "TEXT",
+        "geo_city": "TEXT",
+        "geo_region": "TEXT",
+        "geo_country": "TEXT",
+        "session_id": "TEXT",
+        "request_path": "TEXT",
+        "response_time_ms": "INTEGER",
+    }
+    for col, col_type in new_audit_cols.items():
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE audit_log ADD COLUMN {col} {col_type}")
+    conn.commit()
+
+    # Create sessions table if not exists (handled above in CREATE TABLE IF NOT EXISTS)
+    # Create login_attempts table if not exists (handled above)
+
     conn.close()
-    print("Database initialized.")
+    logger.info("Database initialized.")
 
 
 if __name__ == "__main__":
     init_db()
-    print(f"Database at: {DB_PATH}")
+    logger.info(f"Database at: {settings.DB_PATH}")

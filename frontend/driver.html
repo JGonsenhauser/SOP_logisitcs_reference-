@@ -3,7 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Driver SOP Lookup</title>
+    <title>SOP Lookup</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1565c0">
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SOP Lookup">
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -158,9 +166,39 @@
         }
         .btn-call { background: var(--success); color: white; }
         .btn-nav { background: var(--primary); color: white; }
+
+        /* ── OFFLINE BANNER ── */
+        .offline-banner {
+            display: none; background: #fff3e0; color: #e65100; text-align: center;
+            padding: 10px 16px; font-size: 13px; font-weight: 600;
+            position: sticky; top: 0; z-index: 20;
+        }
+        .offline-banner.show { display: block; }
+
+        /* ── INSTALL PROMPT ── */
+        .install-banner {
+            display: none; background: white; border-top: 1px solid var(--border);
+            padding: 14px 20px; position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            align-items: center; gap: 12px;
+        }
+        .install-banner.show { display: flex; }
+        .install-banner .install-text { flex: 1; }
+        .install-banner .install-text strong { font-size: 15px; display: block; }
+        .install-banner .install-text span { font-size: 12px; color: var(--text2); }
+        .install-banner .install-btn {
+            background: var(--primary); color: white; border: none; padding: 10px 20px;
+            border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        .install-banner .dismiss-btn {
+            background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 4px;
+        }
     </style>
 </head>
 <body>
+
+<!-- ═══════ OFFLINE BANNER ═══════ -->
+<div class="offline-banner" id="offlineBanner">You are offline. Showing cached data.</div>
 
 <!-- ═══════ LOGIN SCREEN ═══════ -->
 <div class="login-screen" id="loginScreen">
@@ -207,6 +245,16 @@
     <div class="sop-actions" id="sopActions"></div>
 </div>
 
+<!-- ═══════ INSTALL PROMPT ═══════ -->
+<div class="install-banner" id="installBanner">
+    <div class="install-text">
+        <strong>Install SOP Lookup</strong>
+        <span>Add to your home screen for quick access</span>
+    </div>
+    <button class="install-btn" id="installBtn">Install</button>
+    <button class="dismiss-btn" id="dismissInstall">&times;</button>
+</div>
+
 <script>
 const API = window.location.origin;
 let sessionToken = null;
@@ -227,25 +275,7 @@ function headers() {
 }
 
 // ── AUTH ──
-async function doLogin() {
-    const id = document.getElementById('driverId').value;
-    const pin = document.getElementById('driverPin').value;
-    document.getElementById('loginError').textContent = '';
-    try {
-        const res = await fetch(`${API}/api/driver/login`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ driver_id: parseInt(id), pin: pin })
-        });
-        const data = await res.json();
-        if (!res.ok) { document.getElementById('loginError').textContent = data.error; return; }
-        sessionToken = data.token;
-        driverInfo = data.driver;
-        document.getElementById('driverNameDisplay').textContent = driverInfo.name;
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('searchScreen').classList.add('active');
-        document.getElementById('searchInput').focus();
-    } catch(e) { document.getElementById('loginError').textContent = 'Connection error'; }
-}
+// doLogin defined at bottom of script (with PWA install prompt integration)
 
 function doLogout() {
     sessionToken = null;
@@ -424,6 +454,95 @@ function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.
 
 // Enter key on PIN
 document.getElementById('driverPin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── SERVICE WORKER REGISTRATION ──
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered', reg.scope))
+        .catch(err => console.log('SW registration failed', err));
+}
+
+// ── OFFLINE DETECTION ──
+function updateOnlineStatus() {
+    const banner = document.getElementById('offlineBanner');
+    if (!navigator.onLine) {
+        banner.classList.add('show');
+    } else {
+        banner.classList.remove('show');
+    }
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+// ── PWA INSTALL PROMPT ──
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show install banner only after login (don't clutter login screen)
+    if (sessionToken && !localStorage.getItem('pwa-install-dismissed')) {
+        document.getElementById('installBanner').classList.add('show');
+    }
+});
+
+document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    console.log('Install prompt result:', result.outcome);
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('show');
+});
+
+document.getElementById('dismissInstall').addEventListener('click', () => {
+    document.getElementById('installBanner').classList.remove('show');
+    localStorage.setItem('pwa-install-dismissed', '1');
+});
+
+// Show install prompt after successful login if available
+window._showInstallAfterLogin = function() {
+    if (deferredPrompt && !localStorage.getItem('pwa-install-dismissed')) {
+        setTimeout(() => {
+            document.getElementById('installBanner').classList.add('show');
+        }, 2000);
+    }
+    // iOS: detect and show manual instructions
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+    if (isIOS && !isStandalone && !localStorage.getItem('pwa-install-dismissed')) {
+        setTimeout(() => {
+            document.getElementById('installBanner').querySelector('strong').textContent = 'Install SOP Lookup';
+            document.getElementById('installBanner').querySelector('span').textContent =
+                'Tap Share, then "Add to Home Screen"';
+            document.getElementById('installBtn').style.display = 'none';
+            document.getElementById('installBanner').classList.add('show');
+        }, 2000);
+    }
+};
+
+// ── AUTH (with PWA install prompt) ──
+async function doLogin() {
+    const id = document.getElementById('driverId').value;
+    const pin = document.getElementById('driverPin').value;
+    document.getElementById('loginError').textContent = '';
+    try {
+        const res = await fetch(`${API}/api/driver/login`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ driver_id: parseInt(id), pin: pin })
+        });
+        const data = await res.json();
+        if (!res.ok) { document.getElementById('loginError').textContent = data.detail || data.error || 'Login failed'; return; }
+        sessionToken = data.token;
+        driverInfo = data.driver;
+        document.getElementById('driverNameDisplay').textContent = driverInfo.name;
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('searchScreen').classList.add('active');
+        document.getElementById('searchInput').focus();
+        window._showInstallAfterLogin();
+    } catch(e) { document.getElementById('loginError').textContent = 'Connection error'; }
+}
 </script>
 </body>
 </html>

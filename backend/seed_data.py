@@ -1,10 +1,15 @@
 """
 SOP App - Seed Data
-Creates drivers + 10 diverse customers with rich SOP requirements.
+Creates drivers + admin + 10 diverse customers with rich SOP requirements.
 """
-import sys, os
+import sys
+import os
+import logging
+
 sys.path.insert(0, os.path.dirname(__file__))
 from database import get_db, hash_pin, init_db
+
+logger = logging.getLogger(__name__)
 
 
 def seed():
@@ -13,9 +18,17 @@ def seed():
 
     # Skip if already seeded
     if conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0] > 0:
-        print("Database already seeded.")
+        logger.info("Database already seeded.")
         conn.close()
         return
+
+    # ── ADMIN USER ──
+    # Default admin account (ID will be 1)
+    conn.execute(
+        "INSERT INTO drivers (first_name, last_name, phone, email, pin_hash, is_admin) VALUES (?,?,?,?,?,?)",
+        ("Admin", "User", "512-555-0100", "admin@sopapp.com", hash_pin("admin2026"), 1)
+    )
+    logger.info("  Admin user created (ID: 1, PIN: admin2026)")
 
     # ── DRIVERS ──
     drivers = [
@@ -24,8 +37,10 @@ def seed():
         ("James", "Mitchell", "210-555-0103", "james@example.com", "9012"),
     ]
     for fn, ln, ph, em, pin in drivers:
-        conn.execute("INSERT INTO drivers (first_name, last_name, phone, email, pin_hash) VALUES (?,?,?,?,?)",
-                     (fn, ln, ph, em, hash_pin(pin)))
+        conn.execute(
+            "INSERT INTO drivers (first_name, last_name, phone, email, pin_hash, is_admin) VALUES (?,?,?,?,?,?)",
+            (fn, ln, ph, em, hash_pin(pin), 0)
+        )
 
     # ── CUSTOMERS ──
     customers = [
@@ -589,7 +604,7 @@ def seed():
 
     conn.commit()
     conn.close()
-    print(f"Seeded {len(customers)} customers with SOP requirements and {len(drivers)} drivers.")
+    logger.info(f"Seeded {len(customers)} customers with SOP requirements, {len(drivers)} drivers, and 1 admin.")
 
 
 if __name__ == "__main__":

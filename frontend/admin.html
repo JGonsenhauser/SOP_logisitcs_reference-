@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOP Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -26,10 +27,11 @@
 
         /* ── LAYOUT ── */
         .app-layout { display: flex; min-height: 100vh; }
-        .sidebar { width: 220px; background: var(--sidebar-bg); color: white; padding: 20px 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; }
+        .sidebar { width: 220px; background: var(--sidebar-bg); color: white; padding: 20px 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; overflow-y: auto; }
         .sidebar h2 { padding: 0 20px; font-size: 16px; margin-bottom: 4px; }
-        .sidebar .sub { padding: 0 20px; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 28px; }
-        .nav-item { display: block; width: 100%; padding: 12px 20px; background: none; border: none; color: rgba(255,255,255,0.6); font-size: 14px; text-align: left; cursor: pointer; border-left: 3px solid transparent; }
+        .sidebar .sub { padding: 0 20px; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 20px; }
+        .sidebar .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 20px 6px; letter-spacing: 1px; }
+        .nav-item { display: block; width: 100%; padding: 10px 20px; background: none; border: none; color: rgba(255,255,255,0.6); font-size: 13px; text-align: left; cursor: pointer; border-left: 3px solid transparent; }
         .nav-item:hover { background: rgba(255,255,255,0.05); color: white; }
         .nav-item.active { color: white; background: rgba(255,255,255,0.1); border-left-color: var(--primary); font-weight: 600; }
         .main { margin-left: 220px; flex: 1; padding: 28px; }
@@ -38,10 +40,19 @@
         .page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
 
         /* ── CARDS ── */
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
-        .stat-card .num { font-size: 32px; font-weight: 700; color: var(--primary); }
-        .stat-card .lbl { font-size: 13px; color: var(--text2); margin-top: 4px; }
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+        .stat-card { background: white; border-radius: 12px; padding: 18px; border: 1px solid var(--border); }
+        .stat-card .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .stat-card .lbl { font-size: 12px; color: var(--text2); margin-top: 4px; }
+        .stat-card.danger .num { color: var(--danger); }
+        .stat-card.success .num { color: var(--success); }
+
+        /* ── CHART CONTAINERS ── */
+        .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .chart-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid var(--border); }
+        .chart-card h4 { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+        .chart-card canvas { max-height: 250px; }
+        @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
 
         /* ── TABLES ── */
         table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
@@ -72,20 +83,14 @@
         /* ── FORMS ── */
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 4px; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
-        }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
         .form-group textarea { resize: vertical; min-height: 60px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .form-hint { font-size: 11px; color: var(--text2); margin-top: 2px; }
 
         /* ── SOP EDITOR ── */
-        .sop-editor { margin-top: 20px; }
         .sop-cat-section { background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
-        .sop-cat-header {
-            padding: 14px 18px; display: flex; align-items: center; gap: 10px;
-            background: #f8f9fa; cursor: pointer; user-select: none; font-weight: 600; font-size: 14px;
-        }
+        .sop-cat-header { padding: 14px 18px; display: flex; align-items: center; gap: 10px; background: #f8f9fa; cursor: pointer; user-select: none; font-weight: 600; font-size: 14px; }
         .sop-cat-header .icon { font-size: 20px; }
         .sop-cat-header .toggle { margin-left: auto; font-size: 16px; color: var(--text2); transition: transform 0.2s; }
         .sop-cat-section.collapsed .sop-cat-body { display: none; }
@@ -93,16 +98,14 @@
         .sop-cat-body { padding: 14px 18px; }
         .sop-field { margin-bottom: 12px; }
         .sop-field label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
-        .sop-field input, .sop-field select, .sop-field textarea {
-            width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px;
-        }
+        .sop-field input, .sop-field select, .sop-field textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
         .sop-field textarea { min-height: 50px; resize: vertical; }
         .sop-field .hint { font-size: 11px; color: var(--text2); }
-        .sop-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        /* ── SEARCH BAR ── */
-        .search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
-        .search-bar input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+        /* ── SEARCH / FILTER BAR ── */
+        .search-bar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+        .search-bar input, .search-bar select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+        .search-bar input { flex: 1; min-width: 200px; }
 
         /* ── ACTIVITY LOG ── */
         .activity-item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
@@ -111,6 +114,20 @@
         .badge-blue { background: var(--primary-light); color: var(--primary); }
         .badge-green { background: #e8f5e9; color: var(--success); }
         .badge-orange { background: #fff3e0; color: var(--warning); }
+        .badge-red { background: #ffebee; color: var(--danger); }
+
+        /* ── PROGRESS BAR ── */
+        .progress-bar { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
+        .progress-bar .fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .progress-bar .fill.low { background: var(--danger); }
+        .progress-bar .fill.mid { background: var(--warning); }
+        .progress-bar .fill.high { background: var(--success); }
+
+        /* ── SECURITY PANEL ── */
+        .security-panel { background: white; border-radius: 12px; padding: 20px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .security-panel h4 { font-size: 14px; margin-bottom: 12px; }
+        .security-item { padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+        .security-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -120,7 +137,8 @@
     <div class="login-card">
         <h1>SOP Admin Dashboard</h1>
         <p>Manage customer delivery requirements</p>
-        <input type="password" id="adminPin" placeholder="Admin PIN" onkeydown="if(event.key==='Enter')adminLogin()">
+        <input type="number" id="adminUserId" placeholder="User ID" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')document.getElementById('adminPin').focus()">
+        <input type="password" id="adminPin" placeholder="PIN" onkeydown="if(event.key==='Enter')adminLogin()">
         <button onclick="adminLogin()">Sign In</button>
         <div class="login-error" id="loginError"></div>
     </div>
@@ -130,11 +148,18 @@
 <div class="app-layout">
     <div class="sidebar">
         <h2>SOP Manager</h2>
-        <div class="sub">Customer Requirements</div>
-        <button class="nav-item active" onclick="showPage('dashboard')">Dashboard</button>
-        <button class="nav-item" onclick="showPage('customers')">Customers</button>
-        <button class="nav-item" onclick="showPage('drivers')">Drivers</button>
-        <button class="nav-item" onclick="showPage('audit')">Audit Log</button>
+        <div class="sub" id="adminName">Admin Dashboard</div>
+        <div class="nav-section">Overview</div>
+        <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button>
+        <div class="nav-section">Manage</div>
+        <button class="nav-item" data-page="customers" onclick="showPage('customers')">Customers</button>
+        <button class="nav-item" data-page="drivers" onclick="showPage('drivers')">Drivers</button>
+        <div class="nav-section">Reports</div>
+        <button class="nav-item" data-page="driver_report" onclick="showPage('driver_report')">Driver Usage</button>
+        <button class="nav-item" data-page="coverage" onclick="showPage('coverage')">SOP Coverage</button>
+        <div class="nav-section">Security</div>
+        <button class="nav-item" data-page="security" onclick="showPage('security')">Security Monitor</button>
+        <button class="nav-item" data-page="audit" onclick="showPage('audit')">Audit Log</button>
     </div>
     <div class="main">
 
@@ -142,8 +167,17 @@
         <div class="page active" id="page_dashboard">
             <h2 class="page-title">Dashboard</h2>
             <div class="stats-row" id="dashStats"></div>
-            <h3 style="margin-bottom:12px;">Recent Activity</h3>
-            <div id="dashActivity" style="background:white;border-radius:12px;padding:16px;border:1px solid var(--border);"></div>
+            <div class="charts-row">
+                <div class="chart-card"><h4>Lookups (Last 30 Days)</h4><canvas id="chartLookups"></canvas></div>
+                <div class="chart-card"><h4>Top 10 Customers by Views</h4><canvas id="chartTopCustomers"></canvas></div>
+            </div>
+            <div class="charts-row">
+                <div class="chart-card"><h4>Activity by Hour of Day</h4><canvas id="chartHourly"></canvas></div>
+                <div class="chart-card">
+                    <h4>Recent Activity</h4>
+                    <div id="dashActivity" style="max-height:250px;overflow-y:auto;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- ── CUSTOMERS ── -->
@@ -164,15 +198,73 @@
             <h2 class="page-title">Drivers</h2>
             <button class="btn btn-primary" onclick="openAddDriver()" style="margin-bottom:16px;">+ Add Driver</button>
             <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Status</th></tr></thead>
+                <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
                 <tbody id="driverTableBody"></tbody>
             </table>
         </div>
 
-        <!-- ── AUDIT ── -->
+        <!-- ── DRIVER USAGE REPORT ── -->
+        <div class="page" id="page_driver_report">
+            <h2 class="page-title">Driver Usage Report</h2>
+            <table>
+                <thead><tr><th>Driver</th><th>Total Lookups</th><th>Unique Customers</th><th>Last Active</th><th>Engagement</th></tr></thead>
+                <tbody id="driverReportBody"></tbody>
+            </table>
+        </div>
+
+        <!-- ── SOP COVERAGE ── -->
+        <div class="page" id="page_coverage">
+            <h2 class="page-title">SOP Coverage Report</h2>
+            <p style="color:var(--text2);margin-bottom:16px;font-size:14px;">Shows how complete each customer's SOP requirements are.</p>
+            <table>
+                <thead><tr><th>Customer</th><th>Type</th><th>Fields Filled</th><th>Coverage</th><th>Last Updated</th></tr></thead>
+                <tbody id="coverageBody"></tbody>
+            </table>
+        </div>
+
+        <!-- ── SECURITY MONITOR ── -->
+        <div class="page" id="page_security">
+            <h2 class="page-title">Security Monitor</h2>
+            <div class="stats-row" id="securityStats"></div>
+            <div class="charts-row">
+                <div class="security-panel">
+                    <h4>Failed Login Attempts (Recent)</h4>
+                    <div id="failedLogins"></div>
+                </div>
+                <div class="security-panel">
+                    <h4>Suspicious IP Activity (7 days)</h4>
+                    <div id="suspiciousIps"></div>
+                </div>
+            </div>
+            <div class="security-panel">
+                <h4>Recent SOP Access Log</h4>
+                <div id="sensitiveAccess"></div>
+            </div>
+        </div>
+
+        <!-- ── AUDIT LOG ── -->
         <div class="page" id="page_audit">
             <h2 class="page-title">Audit Log</h2>
-            <div id="auditList" style="background:white;border-radius:12px;padding:16px;border:1px solid var(--border);"></div>
+            <div class="search-bar">
+                <select id="auditFilterAction" onchange="loadAudit()">
+                    <option value="">All Actions</option>
+                    <option value="login">Login</option>
+                    <option value="login_failed">Failed Login</option>
+                    <option value="search">Search</option>
+                    <option value="view_sop">View SOP</option>
+                    <option value="create">Create</option>
+                    <option value="update">Update</option>
+                    <option value="save_sop">Save SOP</option>
+                    <option value="deactivate">Deactivate</option>
+                </select>
+                <select id="auditFilterType" onchange="loadAudit()">
+                    <option value="">All Users</option>
+                    <option value="driver">Drivers</option>
+                    <option value="admin">Admins</option>
+                </select>
+                <button class="btn btn-outline btn-sm" onclick="exportAuditCSV()">Export CSV</button>
+            </div>
+            <div id="auditList" style="background:white;border-radius:12px;padding:16px;border:1px solid var(--border);max-height:70vh;overflow-y:auto;"></div>
         </div>
     </div>
 </div>
@@ -189,30 +281,22 @@
                 <div class="form-group"><label>Company Name *</label><input id="cf_company_name"></div>
                 <div class="form-group"><label>Type</label>
                     <select id="cf_customer_type">
-                        <option value="commercial">Commercial</option>
-                        <option value="warehouse">Warehouse</option>
-                        <option value="retail">Retail</option>
-                        <option value="restaurant">Restaurant</option>
-                        <option value="medical">Medical</option>
-                        <option value="construction">Construction</option>
-                        <option value="residential">Residential</option>
-                        <option value="school">School / Campus</option>
-                        <option value="pharmacy">Pharmacy</option>
-                        <option value="event_venue">Event Venue</option>
-                        <option value="government">Government</option>
-                        <option value="industrial">Industrial</option>
+                        <option value="commercial">Commercial</option><option value="warehouse">Warehouse</option>
+                        <option value="retail">Retail</option><option value="restaurant">Restaurant</option>
+                        <option value="medical">Medical</option><option value="construction">Construction</option>
+                        <option value="residential">Residential</option><option value="school">School / Campus</option>
+                        <option value="pharmacy">Pharmacy</option><option value="event_venue">Event Venue</option>
+                        <option value="government">Government</option><option value="industrial">Industrial</option>
                     </select>
                 </div>
             </div>
             <div class="form-group"><label>Address</label><input id="cf_address_line1" placeholder="Street address"></div>
             <div class="form-row">
                 <div class="form-group"><label>City</label><input id="cf_city"></div>
-                <div class="form-group">
-                    <div class="form-row">
-                        <div class="form-group"><label>State</label><input id="cf_state" maxlength="2" placeholder="TX"></div>
-                        <div class="form-group"><label>ZIP</label><input id="cf_zip_code"></div>
-                    </div>
-                </div>
+                <div class="form-group"><div class="form-row">
+                    <div class="form-group"><label>State</label><input id="cf_state" maxlength="2" placeholder="TX"></div>
+                    <div class="form-group"><label>ZIP</label><input id="cf_zip_code"></div>
+                </div></div>
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Primary Contact</label><input id="cf_primary_contact_name"></div>
@@ -223,7 +307,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeModal('custModal')">Cancel</button>
-            <button class="btn btn-primary" id="custSaveBtn" onclick="saveCustomer()">Save Customer</button>
+            <button class="btn btn-primary" onclick="saveCustomer()">Save Customer</button>
         </div>
     </div>
 </div>
@@ -257,7 +341,11 @@
             </div>
             <div class="form-group"><label>Phone</label><input id="df_phone"></div>
             <div class="form-group"><label>Email</label><input id="df_email"></div>
-            <div class="form-group"><label>PIN *</label><input id="df_pin" type="password" maxlength="6" placeholder="4-6 digit PIN"></div>
+            <div class="form-group"><label>PIN *</label><input id="df_pin" type="password" maxlength="20" placeholder="4+ character PIN"></div>
+            <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="df_is_admin" style="width:auto;">
+                <label for="df_is_admin" style="margin:0;cursor:pointer;">Grant admin access</label>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeModal('driverModal')">Cancel</button>
@@ -271,6 +359,8 @@ const API = window.location.origin;
 let token = null;
 let sopSchema = null;
 let editingCustId = null;
+let adminUser = null;
+let chartInstances = {};
 
 function headers() { return { 'Content-Type': 'application/json', 'X-Session-Token': token || '' }; }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -278,12 +368,16 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 // ── AUTH ──
 async function adminLogin() {
+    const userId = document.getElementById('adminUserId').value;
     const pin = document.getElementById('adminPin').value;
     document.getElementById('loginError').textContent = '';
-    const res = await fetch(`${API}/api/admin/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pin}) });
+    if (!userId || !pin) { document.getElementById('loginError').textContent = 'User ID and PIN required'; return; }
+    const res = await fetch(`${API}/api/admin/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: parseInt(userId), pin}) });
     const data = await res.json();
-    if (!res.ok) { document.getElementById('loginError').textContent = data.error; return; }
+    if (!res.ok) { document.getElementById('loginError').textContent = data.detail || data.error || 'Login failed'; return; }
     token = data.token;
+    adminUser = data.user;
+    document.getElementById('adminName').textContent = adminUser.name;
     document.getElementById('loginOverlay').classList.add('hidden');
     loadSchema();
     showPage('dashboard');
@@ -295,36 +389,85 @@ async function loadSchema() {
 }
 
 // ── NAVIGATION ──
+const PAGES = ['dashboard','customers','drivers','driver_report','coverage','security','audit'];
 function showPage(name) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page_' + name).classList.add('active');
-    document.querySelectorAll('.nav-item')[['dashboard','customers','drivers','audit'].indexOf(name)].classList.add('active');
-    if (name === 'dashboard') loadDashboard();
-    if (name === 'customers') loadCustomers();
-    if (name === 'drivers') loadDrivers();
-    if (name === 'audit') loadAudit();
+    const nav = document.querySelector(`.nav-item[data-page="${name}"]`);
+    if (nav) nav.classList.add('active');
+    const loaders = {
+        dashboard: loadDashboard, customers: loadCustomers, drivers: loadDrivers,
+        driver_report: loadDriverReport, coverage: loadCoverage,
+        security: loadSecurity, audit: loadAudit
+    };
+    if (loaders[name]) loaders[name]();
 }
 
 // ── DASHBOARD ──
 async function loadDashboard() {
-    const res = await fetch(`${API}/api/admin/dashboard`, { headers: headers() });
-    const data = await res.json();
-    const s = data.stats;
+    const [dashRes, lookupsRes, topRes, hourlyRes] = await Promise.all([
+        fetch(`${API}/api/admin/dashboard`, { headers: headers() }),
+        fetch(`${API}/api/admin/analytics/lookups-over-time?days=30`, { headers: headers() }),
+        fetch(`${API}/api/admin/analytics/top-customers?limit=10`, { headers: headers() }),
+        fetch(`${API}/api/admin/analytics/hourly-activity`, { headers: headers() }),
+    ]);
+    const dash = await dashRes.json();
+    const lookups = await lookupsRes.json();
+    const top = await topRes.json();
+    const hourly = await hourlyRes.json();
+
+    const s = dash.stats;
     document.getElementById('dashStats').innerHTML = `
         <div class="stat-card"><div class="num">${s.total_customers}</div><div class="lbl">Active Customers</div></div>
         <div class="stat-card"><div class="num">${s.total_drivers}</div><div class="lbl">Active Drivers</div></div>
         <div class="stat-card"><div class="num">${s.total_requirements}</div><div class="lbl">SOP Requirements</div></div>
         <div class="stat-card"><div class="num">${s.recent_lookups}</div><div class="lbl">Lookups (24hr)</div></div>
     `;
-    const act = data.recent_activity || [];
+
+    // Recent activity
+    const act = dash.recent_activity || [];
     document.getElementById('dashActivity').innerHTML = act.length === 0 ? '<div style="color:var(--text2)">No recent activity</div>' :
         act.map(a => `<div class="activity-item">
             <span class="badge ${a.user_type==='driver'?'badge-blue':'badge-green'}">${esc(a.user_type)}</span>
-            <strong>${esc(a.user_name||'')}</strong> ${esc(a.action)} on ${esc(a.resource_type)}
+            <strong>${esc(a.user_name||a.display_name||'')}</strong> ${esc(a.action)}
             ${a.details ? '- '+esc(a.details) : ''}
             <div class="time">${esc(a.timestamp)}</div>
         </div>`).join('');
+
+    // Charts
+    renderChart('chartLookups', 'line', {
+        labels: lookups.data.map(d => d.day.slice(5)),
+        datasets: [{ label: 'SOP Lookups', data: lookups.data.map(d => d.count),
+            borderColor: '#1a73e8', backgroundColor: 'rgba(26,115,232,0.1)', fill: true, tension: 0.3 }]
+    });
+
+    renderChart('chartTopCustomers', 'bar', {
+        labels: top.data.map(d => d.company_name.length > 20 ? d.company_name.slice(0,20)+'...' : d.company_name),
+        datasets: [{ label: 'Views', data: top.data.map(d => d.view_count),
+            backgroundColor: '#1a73e8', borderRadius: 4 }]
+    }, { indexAxis: 'y' });
+
+    renderChart('chartHourly', 'bar', {
+        labels: hourly.data.map(d => d.hour + ':00'),
+        datasets: [{ label: 'Actions', data: hourly.data.map(d => d.count),
+            backgroundColor: hourly.data.map(d => d.count > 0 ? 'rgba(26,115,232,0.7)' : 'rgba(26,115,232,0.15)'),
+            borderRadius: 3 }]
+    });
+}
+
+function renderChart(canvasId, type, data, extraOpts = {}) {
+    if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    chartInstances[canvasId] = new Chart(ctx, {
+        type, data,
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            ...extraOpts
+        }
+    });
 }
 
 // ── CUSTOMERS ──
@@ -411,52 +554,27 @@ async function openSOPEditor(custId, companyName) {
     currentSOPCustomerId = custId;
     document.getElementById('sopModalTitle').textContent = `SOP Requirements - ${companyName}`;
     if (!sopSchema) await loadSchema();
-
-    // Get existing requirements
     const res = await fetch(`${API}/api/admin/customers/${custId}/sop`, { headers: headers() });
     const data = await res.json();
     const existing = {};
-    for (const r of (data.requirements || [])) {
-        existing[r.category + '::' + r.requirement_key] = r.requirement_value;
-    }
+    for (const r of (data.requirements || [])) existing[r.category + '::' + r.requirement_key] = r.requirement_value;
 
-    // Build editor
     let html = '';
     for (const [catKey, cat] of Object.entries(sopSchema)) {
         html += `<div class="sop-cat-section" id="sopcat_${catKey}">
             <div class="sop-cat-header" onclick="document.getElementById('sopcat_${catKey}').classList.toggle('collapsed')">
-                <span class="icon">${cat.icon}</span> ${esc(cat.label)}
-                <span class="toggle">&#9660;</span>
-            </div>
-            <div class="sop-cat-body">`;
-
-        for (const [fieldKey, field] of Object.entries(cat.fields)) {
-            const val = existing[catKey + '::' + fieldKey] || '';
-            const inputId = `sop_${catKey}__${fieldKey}`;
-            html += `<div class="sop-field">
-                <label>${esc(field.label)}</label>`;
-
-            if (field.type === 'textarea') {
-                html += `<textarea id="${inputId}" placeholder="${esc(field.hint||'')}">${esc(val)}</textarea>`;
-            } else if (field.type === 'select') {
-                html += `<select id="${inputId}">
-                    <option value="">-- Select --</option>
-                    ${(field.options||[]).map(o => `<option value="${esc(o)}" ${val===o?'selected':''}>${esc(o)}</option>`).join('')}
-                </select>`;
-            } else if (field.type === 'yesno') {
-                html += `<select id="${inputId}">
-                    <option value="">-- Not set --</option>
-                    <option value="Yes" ${val==='Yes'?'selected':''}>Yes</option>
-                    <option value="No" ${val==='No'?'selected':''}>No</option>
-                </select>`;
-            } else if (field.type === 'number') {
-                html += `<input type="number" id="${inputId}" value="${esc(val)}" placeholder="${esc(field.hint||'')}">`;
-            } else if (field.type === 'time') {
-                html += `<input type="time" id="${inputId}" value="${esc(val)}">`;
-            } else {
-                html += `<input type="text" id="${inputId}" value="${esc(val)}" placeholder="${esc(field.hint||'')}">`;
-            }
-
+                <span class="icon">${cat.icon}</span> ${esc(cat.label)} <span class="toggle">&#9660;</span>
+            </div><div class="sop-cat-body">`;
+        for (const [fk, field] of Object.entries(cat.fields)) {
+            const val = existing[catKey + '::' + fk] || '';
+            const iid = `sop_${catKey}__${fk}`;
+            html += `<div class="sop-field"><label>${esc(field.label)}</label>`;
+            if (field.type === 'textarea') html += `<textarea id="${iid}" placeholder="${esc(field.hint||'')}">${esc(val)}</textarea>`;
+            else if (field.type === 'select') html += `<select id="${iid}"><option value="">-- Select --</option>${(field.options||[]).map(o => `<option value="${esc(o)}" ${val===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+            else if (field.type === 'yesno') html += `<select id="${iid}"><option value="">-- Not set --</option><option value="Yes" ${val==='Yes'?'selected':''}>Yes</option><option value="No" ${val==='No'?'selected':''}>No</option></select>`;
+            else if (field.type === 'number') html += `<input type="number" id="${iid}" value="${esc(val)}">`;
+            else if (field.type === 'time') html += `<input type="time" id="${iid}" value="${esc(val)}">`;
+            else html += `<input type="text" id="${iid}" value="${esc(val)}" placeholder="${esc(field.hint||'')}">`;
             if (field.hint && field.type !== 'textarea') html += `<div class="hint">${esc(field.hint)}</div>`;
             html += `</div>`;
         }
@@ -469,18 +587,15 @@ async function openSOPEditor(custId, companyName) {
 async function saveSOP() {
     const requirements = [];
     for (const [catKey, cat] of Object.entries(sopSchema)) {
-        for (const fieldKey of Object.keys(cat.fields)) {
-            const el = document.getElementById(`sop_${catKey}__${fieldKey}`);
+        for (const fk of Object.keys(cat.fields)) {
+            const el = document.getElementById(`sop_${catKey}__${fk}`);
             if (!el) continue;
             const val = el.value.trim();
-            if (val && val !== '-- Not set --' && val !== '-- Select --') {
-                requirements.push({ category: catKey, requirement_key: fieldKey, requirement_value: val });
-            }
+            if (val && val !== '-- Not set --' && val !== '-- Select --')
+                requirements.push({ category: catKey, requirement_key: fk, requirement_value: val });
         }
     }
-    const res = await fetch(`${API}/api/admin/customers/${currentSOPCustomerId}/sop`, {
-        method: 'PUT', headers: headers(), body: JSON.stringify({ requirements })
-    });
+    const res = await fetch(`${API}/api/admin/customers/${currentSOPCustomerId}/sop`, { method: 'PUT', headers: headers(), body: JSON.stringify({ requirements }) });
     const data = await res.json();
     alert(data.message || 'Saved');
     closeModal('sopModal');
@@ -496,6 +611,7 @@ async function loadDrivers() {
         <td>${esc(d.first_name)} ${esc(d.last_name)}</td>
         <td>${esc(d.phone||'')}</td>
         <td>${esc(d.email||'')}</td>
+        <td><span class="badge ${d.is_admin?'badge-orange':'badge-blue'}">${d.is_admin?'Admin':'Driver'}</span></td>
         <td><span class="badge ${d.is_active?'badge-green':'badge-orange'}">${d.is_active?'Active':'Inactive'}</span></td>
     </tr>`).join('');
 }
@@ -509,6 +625,7 @@ async function saveDriver() {
         phone: document.getElementById('df_phone').value,
         email: document.getElementById('df_email').value,
         pin: document.getElementById('df_pin').value,
+        is_admin: document.getElementById('df_is_admin').checked,
     };
     if (!body.first_name || !body.pin) { alert('Name and PIN required'); return; }
     const res = await fetch(`${API}/api/admin/drivers`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
@@ -518,17 +635,115 @@ async function saveDriver() {
     loadDrivers();
 }
 
-// ── AUDIT ──
-async function loadAudit() {
-    const res = await fetch(`${API}/api/admin/audit?limit=100`, { headers: headers() });
+// ── DRIVER USAGE REPORT ──
+async function loadDriverReport() {
+    const res = await fetch(`${API}/api/admin/analytics/driver-usage`, { headers: headers() });
     const data = await res.json();
-    document.getElementById('auditList').innerHTML = (data.logs || []).map(l => `<div class="activity-item">
-        <span class="badge ${l.user_type==='driver'?'badge-blue':'badge-green'}">${esc(l.user_type)}</span>
-        <strong>${esc(l.action)}</strong> on ${esc(l.resource_type)}
+    document.getElementById('driverReportBody').innerHTML = (data.drivers || []).map(d => {
+        const engagement = d.total_lookups > 20 ? 'badge-green' : d.total_lookups > 5 ? 'badge-blue' : 'badge-orange';
+        const engLabel = d.total_lookups > 20 ? 'High' : d.total_lookups > 5 ? 'Medium' : 'Low';
+        return `<tr>
+            <td><strong>${esc(d.name)}</strong></td>
+            <td>${d.total_lookups}</td>
+            <td>${d.unique_customers}</td>
+            <td>${d.last_active ? esc(d.last_active) : '<span style="color:var(--text2)">Never</span>'}</td>
+            <td><span class="badge ${engagement}">${engLabel}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+// ── SOP COVERAGE REPORT ──
+async function loadCoverage() {
+    const res = await fetch(`${API}/api/admin/analytics/customer-coverage`, { headers: headers() });
+    const data = await res.json();
+    document.getElementById('coverageBody').innerHTML = (data.customers || []).map(c => {
+        const pct = c.coverage_pct;
+        const barClass = pct >= 60 ? 'high' : pct >= 30 ? 'mid' : 'low';
+        return `<tr>
+            <td><strong>${esc(c.company_name)}</strong></td>
+            <td><span class="badge badge-blue">${esc(c.customer_type)}</span></td>
+            <td>${c.filled_fields} / ${c.total_fields}</td>
+            <td style="min-width:120px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="progress-bar" style="flex:1;"><div class="fill ${barClass}" style="width:${pct}%"></div></div>
+                    <span style="font-size:12px;font-weight:600;">${pct}%</span>
+                </div>
+            </td>
+            <td style="font-size:12px;color:var(--text2);">${c.last_updated || 'N/A'}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── SECURITY MONITOR ──
+async function loadSecurity() {
+    const res = await fetch(`${API}/api/admin/analytics/security`, { headers: headers() });
+    const data = await res.json();
+
+    document.getElementById('securityStats').innerHTML = `
+        <div class="stat-card ${data.failed_logins_24h > 0 ? 'danger' : 'success'}">
+            <div class="num">${data.failed_logins_24h}</div><div class="lbl">Failed Logins (24hr)</div>
+        </div>
+        <div class="stat-card"><div class="num">${data.suspicious_ips.length}</div><div class="lbl">Suspicious IPs (7d)</div></div>
+        <div class="stat-card"><div class="num">${data.sensitive_access.length}</div><div class="lbl">Recent SOP Views</div></div>
+    `;
+
+    document.getElementById('failedLogins').innerHTML = data.failed_recent.length === 0
+        ? '<div style="color:var(--text2);padding:10px;">No failed login attempts</div>'
+        : data.failed_recent.map(f => `<div class="security-item">
+            <span class="badge badge-red">FAILED</span>
+            User ID: <strong>${f.user_id}</strong> from IP <strong>${esc(f.ip_address||'')}</strong>
+            <div style="font-size:11px;color:var(--text2);">${esc(f.timestamp)} &bull; ${esc(f.user_agent||'').slice(0,60)}</div>
+        </div>`).join('');
+
+    document.getElementById('suspiciousIps').innerHTML = data.suspicious_ips.length === 0
+        ? '<div style="color:var(--text2);padding:10px;">No suspicious activity detected</div>'
+        : data.suspicious_ips.map(s => `<div class="security-item">
+            <span class="badge badge-orange">MULTI-USER</span>
+            IP <strong>${esc(s.ip_address)}</strong> &mdash; ${s.driver_count} different drivers, ${s.login_count} logins
+        </div>`).join('');
+
+    document.getElementById('sensitiveAccess').innerHTML = data.sensitive_access.length === 0
+        ? '<div style="color:var(--text2);padding:10px;">No recent SOP access</div>'
+        : data.sensitive_access.map(a => `<div class="security-item">
+            <span class="badge badge-blue">VIEW</span>
+            <strong>${esc(a.user_name||'')}</strong> viewed <strong>${esc(a.company_name||'Customer #'+a.resource_id)}</strong>
+            <span style="font-size:11px;color:var(--text2);">${esc(a.timestamp)} &bull; IP: ${esc(a.ip_address||'')}</span>
+        </div>`).join('');
+}
+
+// ── AUDIT LOG ──
+let auditData = [];
+async function loadAudit() {
+    const action = document.getElementById('auditFilterAction')?.value || '';
+    const userType = document.getElementById('auditFilterType')?.value || '';
+    const params = new URLSearchParams({ limit: 200 });
+    if (action) params.set('action', action);
+    if (userType) params.set('user_type', userType);
+    const res = await fetch(`${API}/api/admin/audit?${params}`, { headers: headers() });
+    const data = await res.json();
+    auditData = data.logs || [];
+    document.getElementById('auditList').innerHTML = auditData.map(l => `<div class="activity-item">
+        <span class="badge ${l.user_type==='driver'?'badge-blue': l.action==='login_failed'?'badge-red':'badge-green'}">${esc(l.user_type)}</span>
+        <strong>${esc(l.user_name || '')}</strong> ${esc(l.action)} on ${esc(l.resource_type)}
         ${l.resource_id ? '#'+l.resource_id : ''}
         ${l.details ? '('+esc(l.details)+')' : ''}
+        ${l.ip_address ? '<br><small style="color:var(--text2)">IP: '+esc(l.ip_address)+(l.geo_city ? ' - '+esc(l.geo_city)+', '+esc(l.geo_region) : '')+'</small>' : ''}
         <div class="time">${esc(l.timestamp)}</div>
     </div>`).join('');
+}
+
+function exportAuditCSV() {
+    if (auditData.length === 0) { alert('No data to export'); return; }
+    const cols = ['timestamp','user_type','user_name','action','resource_type','resource_id','details','ip_address','geo_city','geo_region'];
+    let csv = cols.join(',') + '\n';
+    for (const row of auditData) {
+        csv += cols.map(c => '"' + String(row[c]||'').replace(/"/g,'""') + '"').join(',') + '\n';
+    }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `audit_log_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
 }
 
 function esc(s) { if (!s && s !== 0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }

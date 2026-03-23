@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="40" fill="#1565c0"/>
+  <text x="96" y="80" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white">SOP</text>
+  <text x="96" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="rgba(255,255,255,0.8)">LOOKUP</text>
+  <rect x="50" y="145" width="92" height="4" rx="2" fill="rgba(255,255,255,0.4)"/>
+</svg>

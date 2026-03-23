@@ -2,6 +2,7 @@
 data/sop_app.db
 data/.encryption_key
 data/photos/
+data/backups/
 
 # Python
 __pycache__/

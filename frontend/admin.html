@@ -137,7 +137,7 @@
     <div class="login-card">
         <h1>SOP Admin Dashboard</h1>
         <p>Manage customer delivery requirements</p>
-        <input type="number" id="adminUserId" placeholder="User ID" style="margin-bottom:10px;" onkeydown="if(event.key==='Enter')document.getElementById('adminPin').focus()">
+        <input type="text" id="adminUsername" placeholder="Username (e.g. AUser)" style="margin-bottom:10px;" autocapitalize="off" onkeydown="if(event.key==='Enter')document.getElementById('adminPin').focus()">
         <input type="password" id="adminPin" placeholder="PIN" onkeydown="if(event.key==='Enter')adminLogin()">
         <button onclick="adminLogin()">Sign In</button>
         <div class="login-error" id="loginError"></div>
@@ -368,11 +368,11 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 
 // ── AUTH ──
 async function adminLogin() {
-    const userId = document.getElementById('adminUserId').value;
+    const username = document.getElementById('adminUsername').value.trim();
     const pin = document.getElementById('adminPin').value;
     document.getElementById('loginError').textContent = '';
-    if (!userId || !pin) { document.getElementById('loginError').textContent = 'User ID and PIN required'; return; }
-    const res = await fetch(`${API}/api/admin/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: parseInt(userId), pin}) });
+    if (!username || !pin) { document.getElementById('loginError').textContent = 'Username and PIN required'; return; }
+    const res = await fetch(`${API}/api/admin/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, pin}) });
     const data = await res.json();
     if (!res.ok) { document.getElementById('loginError').textContent = data.detail || data.error || 'Login failed'; return; }
     token = data.token;

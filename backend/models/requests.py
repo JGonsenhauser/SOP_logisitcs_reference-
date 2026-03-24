@@ -11,7 +11,7 @@ class DriverLoginRequest(BaseModel):
 
 
 class AdminLoginRequest(BaseModel):
-    user_id: int
+    username: str = Field(min_length=2, max_length=50)
     pin: str = Field(min_length=4, max_length=20)
 
 

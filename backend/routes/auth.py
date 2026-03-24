@@ -86,7 +86,7 @@ async def driver_login(body: DriverLoginRequest, request: Request):
     # Match username as first_initial + last_name, case-insensitive
     conn = get_db()
     driver = conn.execute(
-        "SELECT * FROM drivers WHERE LOWER(SUBSTR(first_name,1,1) || last_name) = LOWER(?) AND is_active=1 AND is_admin=0",
+        "SELECT * FROM drivers WHERE LOWER(SUBSTR(first_name,1,1) || last_name) = LOWER(?) AND is_active=1",
         (body.username.strip(),)
     ).fetchone()
     conn.close()

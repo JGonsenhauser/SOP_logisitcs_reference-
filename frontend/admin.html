@@ -27,7 +27,10 @@
 
         /* ── LAYOUT ── */
         .app-layout { display: flex; min-height: 100vh; }
-        .sidebar { width: 220px; background: var(--sidebar-bg); color: white; padding: 20px 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; overflow-y: auto; }
+        .sidebar { width: 220px; background: var(--sidebar-bg); color: white; padding: 20px 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 50; overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar-nav { flex: 1; }
+        .logout-btn { margin: 16px 20px 20px; padding: 10px; background: var(--danger); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; }
+        .logout-btn:hover { background: #a51d1d; }
         .sidebar h2 { padding: 0 20px; font-size: 16px; margin-bottom: 4px; }
         .sidebar .sub { padding: 0 20px; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 20px; }
         .sidebar .nav-section { font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 20px 6px; letter-spacing: 1px; }
@@ -147,19 +150,22 @@
 <!-- ═══ APP ═══ -->
 <div class="app-layout">
     <div class="sidebar">
-        <h2>SOP Manager</h2>
-        <div class="sub" id="adminName">Admin Dashboard</div>
-        <div class="nav-section">Overview</div>
-        <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button>
-        <div class="nav-section">Manage</div>
-        <button class="nav-item" data-page="customers" onclick="showPage('customers')">Customers</button>
-        <button class="nav-item" data-page="drivers" onclick="showPage('drivers')">Drivers</button>
-        <div class="nav-section">Reports</div>
-        <button class="nav-item" data-page="driver_report" onclick="showPage('driver_report')">Driver Usage</button>
-        <button class="nav-item" data-page="coverage" onclick="showPage('coverage')">SOP Coverage</button>
-        <div class="nav-section">Security</div>
-        <button class="nav-item" data-page="security" onclick="showPage('security')">Security Monitor</button>
-        <button class="nav-item" data-page="audit" onclick="showPage('audit')">Audit Log</button>
+        <div class="sidebar-nav">
+            <h2>SOP Manager</h2>
+            <div class="sub" id="adminName">Admin Dashboard</div>
+            <div class="nav-section">Overview</div>
+            <button class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">Dashboard</button>
+            <div class="nav-section">Manage</div>
+            <button class="nav-item" data-page="customers" onclick="showPage('customers')">Customers</button>
+            <button class="nav-item" data-page="drivers" onclick="showPage('drivers')">Drivers</button>
+            <div class="nav-section">Reports</div>
+            <button class="nav-item" data-page="driver_report" onclick="showPage('driver_report')">Driver Usage</button>
+            <button class="nav-item" data-page="coverage" onclick="showPage('coverage')">SOP Coverage</button>
+            <div class="nav-section">Security</div>
+            <button class="nav-item" data-page="security" onclick="showPage('security')">Security Monitor</button>
+            <button class="nav-item" data-page="audit" onclick="showPage('audit')">Audit Log</button>
+        </div>
+        <button class="logout-btn" onclick="adminLogout()">Logout</button>
     </div>
     <div class="main">
 
@@ -381,6 +387,15 @@ async function adminLogin() {
     document.getElementById('loginOverlay').classList.add('hidden');
     loadSchema();
     showPage('dashboard');
+}
+
+function adminLogout() {
+    token = null;
+    adminUser = null;
+    document.getElementById('loginOverlay').classList.remove('hidden');
+    document.getElementById('adminUsername').value = '';
+    document.getElementById('adminPin').value = '';
+    document.getElementById('adminName').textContent = 'Admin Dashboard';
 }
 
 async function loadSchema() {

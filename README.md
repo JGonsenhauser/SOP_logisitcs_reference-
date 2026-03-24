@@ -11,19 +11,6 @@ pip install -r requirements.txt
 python run.py
 ```
 
-- **Admin Dashboard:** http://localhost:8000 — User ID: `1`, PIN: `admin2026`
-- **Driver Lookup:** http://localhost:8000/driver
-- **Install Page:** http://localhost:8000/install
-- **API Docs:** http://localhost:8000/docs
-- **Health Check:** http://localhost:8000/health
-
-Test driver logins (seeded):
-| Driver  | ID | PIN  |
-|---------|----|------|
-| Marcus  | 2  | 1234 |
-| Elena   | 3  | 5678 |
-| James   | 4  | 9012 |
-
 ## Requirements
 
 - Python 3.10+
@@ -34,7 +21,6 @@ Test driver logins (seeded):
 ### Driver App (PWA)
 - Mobile-first responsive design
 - Installable on Android & iOS (Add to Home Screen)
-- Offline support via service worker caching
 - Search customers, view SOP requirements in expandable cards
 - Tap-to-reveal for sensitive codes (auto-hides after 30s)
 - One-tap phone calls and Google Maps navigation
@@ -44,7 +30,6 @@ Test driver logins (seeded):
 - **Customer Management** — Full CRUD with SOP editor across 9 categories
 - **Driver Management** — Create drivers and admins with bcrypt-hashed PINs
 - **Driver Usage Report** — Per-driver lookups, unique customers, engagement levels
-- **SOP Coverage Report** — Completion % per customer with progress bars
 - **Security Monitor** — Failed logins, suspicious IPs, SOP access log
 - **Audit Log** — Filterable by action/user type, CSV export, IP geolocation
 
@@ -80,16 +65,6 @@ Test driver logins (seeded):
 
 The app uses a persistent disk for the SQLite database, so data survives deploys.
 
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `PORT` | No | 8000 | Server port |
-| `ENVIRONMENT` | No | development | `development` or `production` |
-| `ENCRYPTION_KEY` | Prod | — | AES encryption key for sensitive fields |
-| `SESSION_SECRET` | No | auto-generated | Session token entropy |
-| `ALLOWED_ORIGINS` | Prod | `*` | Comma-separated CORS origins |
-| `DB_PATH` | No | `data/sop_app.db` | SQLite database path |
 
 ## Project Structure
 
@@ -150,11 +125,3 @@ sop_app/
 - `GET /api/admin/analytics/*` — Charts data
 - `POST /api/admin/backup` — Trigger backup
 
-## Backup & Recovery
-
-Backups are created automatically on production startup and can be triggered manually via the admin API. Up to 5 backups are retained with automatic rotation.
-
-```bash
-# Manual backup
-python -c "import sys; sys.path.insert(0,'backend'); from backup import create_backup; create_backup()"
-```

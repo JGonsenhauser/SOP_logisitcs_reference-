@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from database import get_db, hash_pin
 from crypto import encrypt_if_sensitive, decrypt_if_sensitive
 from middleware.auth import require_admin, get_client_ip
-from models.requests import CustomerCreate, CustomerUpdate, SOPSaveRequest, DriverCreate
+from models.requests import CustomerCreate, CustomerUpdate, SOPSaveRequest, DriverCreate, DriverUpdate
 from routes.auth import _log_audit
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -268,6 +268,76 @@ def create_driver(
     conn.close()
     _audit(session, request, "create", "driver", did)
     return {"message": "Driver created", "id": did}
+
+
+@router.put("/drivers/{driver_id}")
+def update_driver(
+    driver_id: int,
+    body: DriverUpdate,
+    request: Request,
+    session: dict = Depends(require_admin)
+):
+    conn = get_db()
+    existing = conn.execute("SELECT * FROM drivers WHERE id=?", (driver_id,)).fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    # Prevent admin from removing their own admin access
+    if driver_id == session["user_id"] and body.is_admin is False:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Cannot remove your own admin access")
+
+    updates = []
+    params = []
+    if body.first_name is not None:
+        updates.append("first_name=?"); params.append(body.first_name)
+    if body.last_name is not None:
+        updates.append("last_name=?"); params.append(body.last_name)
+    if body.phone is not None:
+        updates.append("phone=?"); params.append(body.phone)
+    if body.email is not None:
+        updates.append("email=?"); params.append(body.email)
+    if body.pin is not None:
+        updates.append("pin_hash=?"); params.append(hash_pin(body.pin))
+    if body.is_admin is not None:
+        updates.append("is_admin=?"); params.append(1 if body.is_admin else 0)
+
+    if updates:
+        params.append(driver_id)
+        conn.execute(f"UPDATE drivers SET {', '.join(updates)} WHERE id=?", params)
+        conn.commit()
+    conn.close()
+    _audit(session, request, "update", "driver", driver_id)
+    return {"message": "Driver updated"}
+
+
+@router.delete("/drivers/{driver_id}")
+def deactivate_driver(
+    driver_id: int,
+    request: Request,
+    session: dict = Depends(require_admin)
+):
+    # Prevent admin from deactivating themselves
+    if driver_id == session["user_id"]:
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+
+    conn = get_db()
+    existing = conn.execute("SELECT * FROM drivers WHERE id=?", (driver_id,)).fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    new_status = 0 if existing["is_active"] else 1
+    conn.execute("UPDATE drivers SET is_active=? WHERE id=?", (new_status, driver_id))
+    # Expire their sessions if deactivating
+    if new_status == 0:
+        conn.execute("DELETE FROM sessions WHERE user_id=?", (driver_id,))
+    conn.commit()
+    conn.close()
+    action = "deactivate" if new_status == 0 else "reactivate"
+    _audit(session, request, action, "driver", driver_id)
+    return {"message": f"Driver {'deactivated' if new_status == 0 else 'reactivated'}"}
 
 
 # ── Audit Log ──

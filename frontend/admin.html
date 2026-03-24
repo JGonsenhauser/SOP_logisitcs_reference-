@@ -198,7 +198,7 @@
             <h2 class="page-title">Drivers</h2>
             <button class="btn btn-primary" onclick="openAddDriver()" style="margin-bottom:16px;">+ Add Driver</button>
             <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
+                <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody id="driverTableBody"></tbody>
             </table>
         </div>
@@ -331,7 +331,7 @@
 <div class="modal-overlay" id="driverModal">
     <div class="modal" style="max-width:450px;">
         <div class="modal-header">
-            <h3>Add Driver</h3>
+            <h3 id="driverModalTitle">Add Driver</h3>
             <button class="modal-close" onclick="closeModal('driverModal')">&times;</button>
         </div>
         <div class="modal-body">
@@ -341,7 +341,7 @@
             </div>
             <div class="form-group"><label>Phone</label><input id="df_phone"></div>
             <div class="form-group"><label>Email</label><input id="df_email"></div>
-            <div class="form-group"><label>PIN *</label><input id="df_pin" type="password" maxlength="20" placeholder="4+ character PIN"></div>
+            <div class="form-group"><label>PIN</label><input id="df_pin" type="password" maxlength="20" placeholder="4+ character PIN"><div class="form-hint" id="df_pin_hint">Required for new drivers</div></div>
             <div class="form-group" style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" id="df_is_admin" style="width:auto;">
                 <label for="df_is_admin" style="margin:0;cursor:pointer;">Grant admin access</label>
@@ -606,17 +606,52 @@ async function saveSOP() {
 async function loadDrivers() {
     const res = await fetch(`${API}/api/admin/drivers`, { headers: headers() });
     const data = await res.json();
-    document.getElementById('driverTableBody').innerHTML = (data.drivers || []).map(d => `<tr>
-        <td><strong>${d.id}</strong></td>
-        <td>${esc(d.first_name)} ${esc(d.last_name)}</td>
-        <td>${esc(d.phone||'')}</td>
-        <td>${esc(d.email||'')}</td>
-        <td><span class="badge ${d.is_admin?'badge-orange':'badge-blue'}">${d.is_admin?'Admin':'Driver'}</span></td>
-        <td><span class="badge ${d.is_active?'badge-green':'badge-orange'}">${d.is_active?'Active':'Inactive'}</span></td>
-    </tr>`).join('');
+    document.getElementById('driverTableBody').innerHTML = (data.drivers || []).map(d => {
+        const isSelf = adminUser && d.id === adminUser.id;
+        return `<tr style="${!d.is_active ? 'opacity:0.5' : ''}">
+            <td><strong>${d.id}</strong></td>
+            <td>${esc(d.first_name)} ${esc(d.last_name)} ${isSelf ? '<small>(you)</small>' : ''}</td>
+            <td>${esc(d.phone||'')}</td>
+            <td>${esc(d.email||'')}</td>
+            <td><span class="badge ${d.is_admin?'badge-orange':'badge-blue'}">${d.is_admin?'Admin':'Driver'}</span></td>
+            <td><span class="badge ${d.is_active?'badge-green':'badge-red'}">${d.is_active?'Active':'Inactive'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="editDriver(${d.id})">Edit</button>
+                ${!isSelf ? `<button class="btn btn-sm ${d.is_active ? 'btn-danger' : 'btn-success'}" onclick="toggleDriver(${d.id}, '${esc(d.first_name)} ${esc(d.last_name)}', ${d.is_active})">${d.is_active ? 'Deactivate' : 'Reactivate'}</button>` : ''}
+            </td>
+        </tr>`;
+    }).join('');
 }
 
-function openAddDriver() { openModal('driverModal'); }
+let editingDriverId = null;
+
+function openAddDriver() {
+    editingDriverId = null;
+    document.getElementById('driverModalTitle').textContent = 'Add Driver';
+    ['df_first_name','df_last_name','df_phone','df_email','df_pin'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('df_is_admin').checked = false;
+    document.getElementById('df_pin').required = true;
+    document.getElementById('df_pin_hint').textContent = 'Required for new drivers';
+    openModal('driverModal');
+}
+
+async function editDriver(id) {
+    const res = await fetch(`${API}/api/admin/drivers`, { headers: headers() });
+    const data = await res.json();
+    const d = (data.drivers || []).find(dr => dr.id === id);
+    if (!d) return;
+    editingDriverId = id;
+    document.getElementById('driverModalTitle').textContent = 'Edit Driver';
+    document.getElementById('df_first_name').value = d.first_name || '';
+    document.getElementById('df_last_name').value = d.last_name || '';
+    document.getElementById('df_phone').value = d.phone || '';
+    document.getElementById('df_email').value = d.email || '';
+    document.getElementById('df_pin').value = '';
+    document.getElementById('df_pin').required = false;
+    document.getElementById('df_pin_hint').textContent = 'Leave blank to keep current PIN';
+    document.getElementById('df_is_admin').checked = !!d.is_admin;
+    openModal('driverModal');
+}
 
 async function saveDriver() {
     const body = {
@@ -624,14 +659,38 @@ async function saveDriver() {
         last_name: document.getElementById('df_last_name').value,
         phone: document.getElementById('df_phone').value,
         email: document.getElementById('df_email').value,
-        pin: document.getElementById('df_pin').value,
         is_admin: document.getElementById('df_is_admin').checked,
     };
-    if (!body.first_name || !body.pin) { alert('Name and PIN required'); return; }
-    const res = await fetch(`${API}/api/admin/drivers`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
-    const data = await res.json();
-    alert(`Driver created! ID: ${data.id}`);
+    const pin = document.getElementById('df_pin').value;
+    if (!body.first_name) { alert('First name required'); return; }
+
+    if (editingDriverId) {
+        // Update existing driver
+        if (pin) body.pin = pin;
+        const res = await fetch(`${API}/api/admin/drivers/${editingDriverId}`, { method:'PUT', headers: headers(), body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { alert(data.detail || 'Update failed'); return; }
+        alert('Driver updated');
+    } else {
+        // Create new driver
+        if (!pin) { alert('PIN required for new drivers'); return; }
+        body.pin = pin;
+        const res = await fetch(`${API}/api/admin/drivers`, { method:'POST', headers: headers(), body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { alert(data.detail || 'Create failed'); return; }
+        alert(`Driver created! ID: ${data.id}`);
+    }
+    editingDriverId = null;
     closeModal('driverModal');
+    loadDrivers();
+}
+
+async function toggleDriver(id, name, isActive) {
+    const action = isActive ? 'Deactivate' : 'Reactivate';
+    if (!confirm(`${action} "${name}"? ${isActive ? 'They will be logged out and unable to sign in.' : 'They will be able to sign in again.'}`)) return;
+    const res = await fetch(`${API}/api/admin/drivers/${id}`, { method:'DELETE', headers: headers() });
+    const data = await res.json();
+    if (!res.ok) { alert(data.detail || 'Action failed'); return; }
     loadDrivers();
 }
 

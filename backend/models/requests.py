@@ -61,3 +61,12 @@ class DriverCreate(BaseModel):
     email: Optional[str] = None
     pin: str = Field(min_length=4, max_length=20)
     is_admin: bool = False
+
+
+class DriverUpdate(BaseModel):
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    pin: Optional[str] = Field(None, min_length=4, max_length=20)
+    is_admin: Optional[bool] = None

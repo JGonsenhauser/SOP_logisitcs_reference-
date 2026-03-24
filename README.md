@@ -11,6 +11,16 @@ pip install -r requirements.txt
 python run.py
 ```
 
+- **Admin Dashboard:** http://localhost:8000 — User ID: `1`, PIN: `admin2026`
+- **Driver Lookup:** http://localhost:8000/driver
+
+Test driver logins (seeded):
+| Driver | Username | PIN |
+|---|---|---|
+| Marcus Johnson | `MJohnson` | 1234 |
+| Elena Rodriguez | `ERodriguez` | 5678 |
+| James Mitchell | `JMitchell` | 9012 |
+
 ## Requirements
 
 - Python 3.10+

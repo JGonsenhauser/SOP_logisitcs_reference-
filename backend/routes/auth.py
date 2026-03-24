@@ -83,19 +83,20 @@ async def driver_login(body: DriverLoginRequest, request: Request):
     ip = get_client_ip(request)
     check_rate_limit(ip)
 
+    # Match username as first_initial + last_name, case-insensitive
     conn = get_db()
     driver = conn.execute(
-        "SELECT * FROM drivers WHERE id=? AND is_active=1",
-        (body.driver_id,)
+        "SELECT * FROM drivers WHERE LOWER(SUBSTR(first_name,1,1) || last_name) = LOWER(?) AND is_active=1 AND is_admin=0",
+        (body.username.strip(),)
     ).fetchone()
     conn.close()
 
     if not driver or not verify_pin(body.pin, driver["pin_hash"]):
         record_login_attempt(ip)
-        _log_audit("driver", body.driver_id, "", "login_failed", "session",
+        _log_audit("driver", 0, body.username, "login_failed", "session",
                    ip=ip, user_agent=request.headers.get("user-agent"),
                    request_path="/api/driver/login")
-        raise HTTPException(status_code=401, detail="Invalid driver ID or PIN")
+        raise HTTPException(status_code=401, detail="Invalid username or PIN")
 
     name = f"{driver['first_name']} {driver['last_name']}"
     geo = await _geolocate_ip(ip)

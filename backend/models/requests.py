@@ -6,7 +6,7 @@ from typing import Optional
 
 
 class DriverLoginRequest(BaseModel):
-    driver_id: int
+    username: str = Field(min_length=2, max_length=50)
     pin: str = Field(min_length=4, max_length=20)
 
 

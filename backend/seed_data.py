@@ -28,7 +28,7 @@ def seed():
         "INSERT INTO drivers (first_name, last_name, phone, email, pin_hash, is_admin) VALUES (?,?,?,?,?,?)",
         ("Admin", "User", "512-555-0100", "admin@sopapp.com", hash_pin("admin2026"), 1)
     )
-    logger.info("  Admin user created (ID: 1, PIN: admin2026)")
+    logger.info("  Admin user created (ID: 1, Username: AUser, PIN: admin2026)")
 
     # ── DRIVERS ──
     drivers = [
@@ -41,6 +41,7 @@ def seed():
             "INSERT INTO drivers (first_name, last_name, phone, email, pin_hash, is_admin) VALUES (?,?,?,?,?,?)",
             (fn, ln, ph, em, hash_pin(pin), 0)
         )
+        logger.info(f"  Driver created: Username={fn[0]}{ln}, PIN={pin}")
 
     # ── CUSTOMERS ──
     customers = [

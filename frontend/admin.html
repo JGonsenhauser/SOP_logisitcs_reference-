@@ -198,7 +198,7 @@
             <h2 class="page-title">Drivers</h2>
             <button class="btn btn-primary" onclick="openAddDriver()" style="margin-bottom:16px;">+ Add Driver</button>
             <table>
-                <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>#</th><th>Username</th><th>Name</th><th>Phone</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody id="driverTableBody"></tbody>
             </table>
         </div>
@@ -606,10 +606,11 @@ async function saveSOP() {
 async function loadDrivers() {
     const res = await fetch(`${API}/api/admin/drivers`, { headers: headers() });
     const data = await res.json();
-    document.getElementById('driverTableBody').innerHTML = (data.drivers || []).map(d => {
+    document.getElementById('driverTableBody').innerHTML = (data.drivers || []).map((d, idx) => {
         const isSelf = adminUser && d.id === adminUser.id;
         return `<tr style="${!d.is_active ? 'opacity:0.5' : ''}">
-            <td><strong>${d.id}</strong></td>
+            <td><strong>${idx + 1}</strong></td>
+            <td><code style="background:#f0f0f0;padding:2px 6px;border-radius:4px;">${esc(d.username||'')}</code></td>
             <td>${esc(d.first_name)} ${esc(d.last_name)} ${isSelf ? '<small>(you)</small>' : ''}</td>
             <td>${esc(d.phone||'')}</td>
             <td>${esc(d.email||'')}</td>

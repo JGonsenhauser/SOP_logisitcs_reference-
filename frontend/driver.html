@@ -205,8 +205,8 @@
     <div class="login-box">
         <h1>Driver SOP Lookup</h1>
         <p class="sub">Enter your driver credentials</p>
-        <input type="number" id="driverId" placeholder="Driver ID" inputmode="numeric">
-        <input type="password" id="driverPin" placeholder="PIN" inputmode="numeric">
+        <input type="text" id="driverUsername" placeholder="Username (e.g. MJohnson)" autocomplete="username" autocapitalize="off">
+        <input type="password" id="driverPin" placeholder="PIN">
         <button onclick="doLogin()">Sign In</button>
         <div class="login-error" id="loginError"></div>
     </div>
@@ -283,7 +283,7 @@ function doLogout() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('searchScreen').classList.remove('active');
     document.getElementById('sopView').classList.remove('active');
-    document.getElementById('driverId').value = '';
+    document.getElementById('driverUsername').value = '';
     document.getElementById('driverPin').value = '';
 }
 
@@ -454,6 +454,7 @@ function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.
 
 // Enter key on PIN
 document.getElementById('driverPin').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('driverUsername').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('driverPin').focus(); });
 
 // ── SERVICE WORKER REGISTRATION ──
 if ('serviceWorker' in navigator) {
@@ -524,13 +525,14 @@ window._showInstallAfterLogin = function() {
 
 // ── AUTH (with PWA install prompt) ──
 async function doLogin() {
-    const id = document.getElementById('driverId').value;
+    const username = document.getElementById('driverUsername').value.trim();
     const pin = document.getElementById('driverPin').value;
     document.getElementById('loginError').textContent = '';
+    if (!username || !pin) { document.getElementById('loginError').textContent = 'Username and PIN required'; return; }
     try {
         const res = await fetch(`${API}/api/driver/login`, {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ driver_id: parseInt(id), pin: pin })
+            body: JSON.stringify({ username: username, pin: pin })
         });
         const data = await res.json();
         if (!res.ok) { document.getElementById('loginError').textContent = data.detail || data.error || 'Login failed'; return; }

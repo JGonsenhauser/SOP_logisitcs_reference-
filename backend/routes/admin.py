@@ -245,7 +245,9 @@ def save_customer_sop(
 def get_drivers(request: Request, session: dict = Depends(require_admin)):
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, first_name, last_name, phone, email, is_admin, is_active, created_at FROM drivers ORDER BY first_name"
+        "SELECT id, first_name, last_name, phone, email, is_admin, is_active, created_at,"
+        " SUBSTR(first_name,1,1) || last_name as username"
+        " FROM drivers ORDER BY id"
     ).fetchall()
     conn.close()
     return {"drivers": [dict(r) for r in rows]}

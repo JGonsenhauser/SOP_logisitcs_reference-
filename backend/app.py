@@ -57,6 +57,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"Startup backup failed: {e}")
 
+    # Debug: log frontend directory and files for deployment troubleshooting
+    logger.info(f"FRONTEND_DIR: {FRONTEND_DIR}")
+    logger.info(f"FRONTEND_DIR exists: {os.path.exists(FRONTEND_DIR)}")
+    if os.path.exists(FRONTEND_DIR):
+        files = os.listdir(FRONTEND_DIR)
+        logger.info(f"Frontend files: {files}")
+
     logger.info(f"Server ready (env={settings.ENVIRONMENT})")
     yield
     # Shutdown
@@ -110,9 +117,12 @@ async def serve_driver():
 @app.get("/install")
 async def serve_install():
     path = os.path.join(FRONTEND_DIR, "install.html")
+    logger.info(f"Serving /install - path={path}, exists={os.path.exists(path)}")
     if os.path.exists(path):
         return FileResponse(path)
-    return FileResponse(os.path.join(FRONTEND_DIR, "driver.html"))
+    # Fallback: if install.html is missing, log it and return error
+    logger.error(f"install.html not found at {path}")
+    return JSONResponse({"error": "Install page not found", "path": path, "frontend_dir_files": os.listdir(FRONTEND_DIR) if os.path.exists(FRONTEND_DIR) else "DIR NOT FOUND"}, status_code=404)
 
 
 @app.get("/manifest.json")
@@ -138,6 +148,23 @@ async def serve_icon(filename: str):
         media = "image/svg+xml" if filename.endswith(".svg") else "image/png"
         return FileResponse(path, media_type=media)
     return JSONResponse({"error": "Not found"}, status_code=404)
+
+
+@app.get("/debug/files")
+async def debug_files():
+    """Temporary debug endpoint to check frontend files on server."""
+    result = {
+        "frontend_dir": FRONTEND_DIR,
+        "exists": os.path.exists(FRONTEND_DIR),
+        "cwd": os.getcwd(),
+        "app_file": os.path.abspath(__file__),
+    }
+    if os.path.exists(FRONTEND_DIR):
+        result["files"] = os.listdir(FRONTEND_DIR)
+        icons_dir = os.path.join(FRONTEND_DIR, "icons")
+        if os.path.exists(icons_dir):
+            result["icons"] = os.listdir(icons_dir)
+    return result
 
 
 @app.get("/health")
